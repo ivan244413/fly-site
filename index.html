@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fly.io – Arena dei moscerini</title>
+<style>
+:root{--bg:#e9eee8;--fg:#1b241f;--mut:#667068;--card:#f7faf6;--bd:#cdd6cc;--ac:#b4231a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a100d;--fg:#e4ece6;--mut:#8b998f;--card:#131c17;--bd:#26342b;--ac:#ff5a4d}}
+:root[data-theme="dark"]{--bg:#0a100d;--fg:#e4ece6;--mut:#8b998f;--card:#131c17;--bd:#26342b;--ac:#ff5a4d}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:13px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif}
+#app{height:100%;display:grid;grid-template-columns:176px minmax(0,1fr) 176px;gap:8px;padding:8px;box-sizing:border-box}
+.p{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;overflow:auto;min-height:0}
+.p h2{font-size:13px;margin:10px 0 6px;font-weight:700}
+.p h2:first-child{margin-top:0}
+#stage{position:relative;min-height:0;border-radius:10px;overflow:hidden;background:#0c1511}
+#c{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+#hud{position:absolute;left:10px;top:10px;right:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;pointer-events:none;color:#e4ece6}
+#hud b{font-size:15px;margin-right:4px}
+#msg{margin-left:auto;color:#ff8a80;font-weight:700}
+button,input{font:inherit;color:inherit}
+button{pointer-events:auto;background:#1d2b23;border:1px solid #3a4f42;color:#e4ece6;border-radius:8px;padding:5px 10px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+input{width:100%;box-sizing:border-box;background:transparent;border:1px solid var(--bd);border-radius:8px;padding:5px 8px}
+.small{color:var(--mut);font-size:12px;margin:4px 0}
+.row{display:flex;justify-content:space-between;gap:6px;padding:3px 4px;border-radius:6px}
+.row span:last-child{font-variant-numeric:tabular-nums;color:var(--mut)}
+.row.me{background:color-mix(in srgb,var(--ac) 18%,transparent);font-weight:700}
+@media (max-width:700px){#app{grid-template-columns:104px minmax(0,1fr) 104px;gap:4px;padding:4px}.p{padding:6px;font-size:11px}#hud b{font-size:12px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="p">
+    <h2>La tua mosca</h2>
+    <input id="nm" value="Tu" maxlength="14" aria-label="Il tuo nome">
+    <h2>Comandi</h2>
+    <p class="small">W A S D, mouse o dito: muovi.<br>T: ti dividi in due.<br>Y: lanci un po’ di massa.<br>M: mappa intera.<br>Mangi chi ha anche solo 1 di massa meno di te.</p>
+    <h2>Più grandi</h2>
+    <div id="lb"></div>
+  </aside>
+  <main id="stage">
+    <canvas id="c"></canvas>
+    <div id="hud"><b id="ms">Massa 10</b><button id="map" type="button">Mappa intera</button><button id="sp" type="button">Dividi (T)</button><button id="ej" type="button">Espelli (Y)</button><span id="msg"></span></div>
+  </main>
+  <aside class="p">
+    <h2>Morti</h2>
+    <div id="dl"></div>
+  </aside>
+</div>
+<script>
+const WORLD=3000,C=document.getElementById('c'),X=C.getContext('2d');
+let w=1,h=1,dpr=1,full=false,mx=0,my=0,toast=0,scl=.8,T=0;const cam={x:1500,y:1500};
+function rs(){dpr=devicePixelRatio||1;const r=C.getBoundingClientRect();w=r.width;h=r.height;C.width=w*dpr;C.height=h*dpr}
+addEventListener('resize',rs);
+const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rad=m=>4+Math.sqrt(m)*2.6;
+const NAMES=['Zzzap','Drosofila','Bzzt','Moscerino','Pungiglione','Ronzio','Mosca Rossa','Dottor Bzz','Frullo','Vola-Vola','Occhirossi','Ali di Seta','Fruttina','Aristotele','Gigi'];
+const owners=[],cells=[];let food=Array.from({length:520},()=>({x:rnd(20,WORLD-20),y:rnd(20,WORLD-20),c:Math.floor(rnd(0,360)),m:1,vx:0,vy:0}));
+function newCell(o,x,y,m){const c={o,x,y,m,vx:0,vy:0,bx:0,by:0,mt:0,ang:rnd(0,6.28),ph:rnd(0,6)};cells.push(c);return c}
+function spawn(o){newCell(o,rnd(100,WORLD-100),rnd(100,WORLD-100),10);o.dead=0}
+function mk(name,bot){const o={id:owners.length,name,bot,deaths:0,dead:0,hue:bot?Math.floor(rnd(15,70)):50,wx:0,wy:0};owners.push(o);spawn(o);return o}
+const me=mk('Tu',false);NAMES.forEach(n=>mk(n,true));
+const mine=()=>cells.filter(c=>c.o===me);
+function wm(){return{x:cam.x+(mx-w/2)/scl,y:cam.y+(my-h/2)/scl}}
+const keys={};let kb=false;
+function aim(c){if(kb)return[Math.cos(c.ang),Math.sin(c.ang)];const m=wm(),dx=m.x-c.x,dy=m.y-c.y,l=Math.hypot(dx,dy)||1;return[dx/l,dy/l]}
+function nearCell(c,t){let b=null,bd=500;for(const k of cells){if(!t(k))continue;const d=Math.hypot(k.x-c.x,k.y-c.y);if(d<bd){bd=d;b=k}}return b?{dx:(b.x-c.x)/bd,dy:(b.y-c.y)/bd,p:1-bd/500}:{dx:0,dy:0,p:0}}
+function nearFood(c){let b=null,bd=400;for(const f of food){const d=Math.hypot(f.x-c.x,f.y-c.y);if(d<bd){bd=d;b=f}}return b?{dx:(b.x-c.x)/bd,dy:(b.y-c.y)/bd,p:1-bd/400}:{dx:0,dy:0,p:0}}
+function split(){for(const c of mine()){if(c.m<20||mine().length>=8)continue;const[dx,dy]=aim(c),l=1;c.m/=2;c.mt=12;const n=newCell(me,c.x,c.y,c.m);n.mt=12;n.bx=dx/l*700;n.by=dy/l*700;n.ang=c.ang}}
+function eject(){for(const c of mine()){if(c.m<14)continue;const[dx,dy]=aim(c),l=1;c.m-=2;const r=rad(c.m)+10;food.push({x:c.x+dx/l*r,y:c.y+dy/l*r,c:50,m:1.5,e:1,vx:dx/l*600,vy:dy/l*600})}}
+function step(dt){
+  for(const o of owners)if(o.dead>0){o.dead-=dt;if(o.dead<=0)spawn(o)}
+  const ws=wm();
+  for(const c of cells){
+    const o=c.o;let tx=0,ty=0;const sp=260*Math.pow(c.m,-.18);
+    if(o.bot){
+      const fd=nearFood(c),pr=nearCell(c,k=>k.o!==o&&k.m+1<=c.m),th=nearCell(c,k=>k.o!==o&&k.m>=c.m+1);
+      o.wx=(o.wx+rnd(-.2,.2))*.97;o.wy=(o.wy+rnd(-.2,.2))*.97;
+      tx=fd.dx*fd.p*.7+pr.dx*pr.p*1.2-th.dx*th.p*1.8+o.wx;ty=fd.dy*fd.p*.7+pr.dy*pr.p*1.2-th.dy*th.p*1.8+o.wy;
+      if(c.x<150)tx+=1;if(c.x>WORLD-150)tx-=1;if(c.y<150)ty+=1;if(c.y>WORLD-150)ty-=1;
+      const l=Math.hypot(tx,ty)||1;tx/=l;ty/=l;
+    }else{
+      const kx=(keys.d?1:0)-(keys.a?1:0),ky=(keys.s?1:0)-(keys.w?1:0),kl=Math.hypot(kx,ky);if(kb&&kl){tx=kx/kl;ty=ky/kl}const dx=ws.x-c.x,dy=ws.y-c.y,l=kb?0:Math.hypot(dx,dy);
+      if(l>1){const k=Math.min(1,l*scl/60);tx=dx/l*k;ty=dy/l*k}
+    }
+    c.vx+=(tx*sp-c.vx)*Math.min(1,dt*5);c.vy+=(ty*sp-c.vy)*Math.min(1,dt*5);
+    c.x=clamp(c.x+(c.vx+c.bx)*dt,0,WORLD);c.y=clamp(c.y+(c.vy+c.by)*dt,0,WORLD);
+    const bd=Math.pow(.015,dt);c.bx*=bd;c.by*=bd;c.mt-=dt;
+    if(Math.hypot(c.vx,c.vy)>10)c.ang=Math.atan2(c.vy,c.vx);
+    const r=rad(c.m);
+    for(let i=food.length-1;i>=0;i--){const f=food[i];if(Math.abs(f.x-c.x)<r&&Math.abs(f.y-c.y)<r&&Math.hypot(f.x-c.x,f.y-c.y)<r){c.m+=f.m;if(f.e)food.splice(i,1);else{f.x=rnd(20,WORLD-20);f.y=rnd(20,WORLD-20)}}}
+    if(c.m>25)c.m*=1-.01*dt;
+  }
+  for(const f of food)if(f.vx||f.vy){f.x=clamp(f.x+f.vx*dt,0,WORLD);f.y=clamp(f.y+f.vy*dt,0,WORLD);const k=Math.pow(.02,dt);f.vx*=k;f.vy*=k;if(Math.abs(f.vx)+Math.abs(f.vy)<2)f.vx=f.vy=0}
+  const gone=new Set();
+  for(const a of cells){if(gone.has(a))continue;for(const b of cells){if(a===b||gone.has(b))continue;const d=Math.hypot(a.x-b.x,a.y-b.y);
+    if(a.o===b.o){if(a.mt<=0&&b.mt<=0&&a.m>=b.m&&d<rad(a.m)*.6){a.m+=b.m;gone.add(b)}}
+    else if(a.m>=b.m+1&&d<rad(a.m)){a.m+=b.m*.8;gone.add(b)}}}
+  for(let i=cells.length-1;i>=0;i--)if(gone.has(cells[i]))cells.splice(i,1);
+  for(const o of owners)if(o.dead<=0&&!cells.some(c=>c.o===o)){o.deaths++;o.dead=1.6;if(o===me){toast=1.6;document.getElementById('msg').textContent='Mangiata! Rinasci…'}}
+  if(toast>0){toast-=dt;if(toast<=0)document.getElementById('msg').textContent=''}
+}
+function drawFly(c,s){
+  const r=rad(c.m),a=c.ang,fl=Math.sin(T*38+c.ph)*.35,o=c.o;
+  X.save();X.translate(c.x,c.y);X.rotate(a);
+  X.fillStyle='rgba(200,225,255,.35)';X.strokeStyle='rgba(200,225,255,.7)';X.lineWidth=1/s;
+  for(const sg of[-1,1]){X.beginPath();X.ellipse(-r*.1,sg*r*.75,r*.95,r*.38*(1+fl*sg*.4),sg*(.5+fl),0,6.28);X.fill();X.stroke()}
+  X.fillStyle=`hsl(${o.hue},45%,${o===me?42:30}%)`;X.beginPath();X.ellipse(-r*.25,0,r*.85,r*.6,0,0,6.28);X.fill();
+  X.fillStyle=`hsl(${o.hue},50%,22%)`;X.beginPath();X.arc(r*.55,0,r*.48,0,6.28);X.fill();
+  X.fillStyle='#d62a1f';for(const sg of[-1,1]){X.beginPath();X.arc(r*.7,sg*r*.3,r*.24,0,6.28);X.fill()}
+  X.restore();
+  if(o===me){X.strokeStyle='#ffd24a';X.lineWidth=2/s;X.beginPath();X.arc(c.x,c.y,r*1.25,0,6.28);X.stroke()}
+  const fs=Math.max(11/s,r*.55);X.textAlign='center';X.font=`600 ${fs}px system-ui,sans-serif`;
+  X.fillStyle='#fff';X.fillText(o.name,c.x,c.y-r*1.5);
+  X.fillStyle='#ffd24a';X.fillText(Math.round(c.m),c.x,c.y-r*1.5-fs*1.15);
+}
+function draw(){
+  X.setTransform(dpr,0,0,dpr,0,0);X.fillStyle='#0c1511';X.fillRect(0,0,w,h);
+  const m=mine();let cx=cam.x,cy=cam.y,tot=0,spread=0;
+  if(m.length){cx=cy=0;for(const c of m){cx+=c.x;cy+=c.y;tot+=c.m}cx/=m.length;cy/=m.length;for(const c of m)spread=Math.max(spread,Math.hypot(c.x-cx,c.y-cy))}
+  const tgt=full?Math.min(w,h)/(WORLD*1.04):clamp(1.15-(rad(tot||10)+spread)/140,.3,1.1);
+  scl+=(tgt-scl)*.12;const s=scl;
+  const tx=full?WORLD/2:cx,ty=full?WORLD/2:cy;cam.x+=(tx-cam.x)*.2;cam.y+=(ty-cam.y)*.2;
+  X.translate(w/2-cam.x*s,h/2-cam.y*s);X.scale(s,s);
+  X.fillStyle='#101d16';X.fillRect(0,0,WORLD,WORLD);
+  X.strokeStyle='rgba(120,170,140,.12)';X.lineWidth=1/s;X.beginPath();
+  for(let i=0;i<=WORLD;i+=150){X.moveTo(i,0);X.lineTo(i,WORLD);X.moveTo(0,i);X.lineTo(WORLD,i)}X.stroke();
+  X.strokeStyle='#ff5a4d';X.lineWidth=4/s;X.strokeRect(0,0,WORLD,WORLD);
+  for(const f of food){X.fillStyle=`hsl(${f.c},70%,60%)`;X.beginPath();X.arc(f.x,f.y,f.e?6:5,0,6.28);X.fill()}
+  [...cells].sort((a,b)=>a.m-b.m).forEach(c=>drawFly(c,s));
+}
+function lists(){
+  const tot=owners.map(()=>0);for(const c of cells)tot[c.o.id]+=c.m;
+  const row=(o,v)=>`<div class="row${o===me?' me':''}"><span>${o.name}</span><span>${v}</span></div>`;
+  document.getElementById('lb').innerHTML=owners.filter(o=>tot[o.id]>0).sort((a,b)=>tot[b.id]-tot[a.id]).slice(0,8).map(o=>row(o,Math.round(tot[o.id]))).join('');
+  document.getElementById('dl').innerHTML=[...owners].sort((a,b)=>b.deaths-a.deaths||a.id-b.id).map(o=>row(o,o.deaths)).join('');
+  document.getElementById('ms').textContent='Massa '+Math.round(tot[me.id]);
+}
+document.getElementById('nm').addEventListener('input',e=>{me.name=e.target.value.trim()||'Tu'});
+const mapBtn=document.getElementById('map');
+const tgl=()=>{full=!full;mapBtn.textContent=full?'Torna alla mosca':'Mappa intera'};
+mapBtn.addEventListener('click',tgl);
+document.getElementById('sp').addEventListener('click',split);
+document.getElementById('ej').addEventListener('click',eject);
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
+  if(k==='m')tgl();else if(k==='y')eject();else if(k==='t'){if(!e.repeat)split()}else if(k.length===1&&'wasd'.includes(k)){keys[k]=true;kb=true}});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
+function pm(e){const r=C.getBoundingClientRect(),nx=e.clientX-r.left,ny=e.clientY-r.top;if(Math.hypot(nx-mx,ny-my)>4)kb=false;mx=nx;my=ny}
+C.addEventListener('pointermove',pm);C.addEventListener('pointerdown',pm);
+let last=performance.now(),lt=0;
+function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;T+=dt;step(dt);draw();lt+=dt;if(lt>.25){lt=0;lists()}requestAnimationFrame(loop)}
+rs();mx=w/2;my=h/2;lists();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
