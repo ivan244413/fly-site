@@ -263,7 +263,7 @@ function onP(ch){
   }
   for(let i=cells.length-1;i>=0;i--)if(cells[i].r&&!alive.has(cells[i].key))cells.splice(i,1);
   for(const k in ro)if(!alive.has(k))delete ro[k];
-  $('bsw').hidden=!teams;if(!$('l3').hidden)$('plist').innerHTML=ps.filter(p=>p.kind==='viewer').map(p=>{const d=p.presence||{};return `<div class="row"><span>${esc(String(d.n||'Giocatore').slice(0,14))}${p.isMe?' (tu)':''}${d.host?' – host':''}</span></div>`}).join('');
+  $('bsw').hidden=!teams;if(!$('l3').hidden)$('plist').innerHTML=ps.filter(p=>p.kind==='viewer').map(p=>{const d=p.presence||{};return `<div class="row"><span>${teams&&(d.t===0||d.t===1)?'<b style="color:'+(d.t?'#4da3ff':'#ff5a4d')+'">● </b>':''}${esc(String(d.n||'Giocatore').slice(0,14))}${p.isMe?' (tu)':''}${d.host?' – host':''}</span></div>`}).join('');
 }
 function pub(){
   const p={n:me.name,d:me.deaths,g:G,fe:elog,kb:KB,t:myT,c:mine().map(c=>[Math.round(c.x),Math.round(c.y),+c.m.toFixed(1)])};
