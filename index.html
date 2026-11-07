@@ -131,7 +131,7 @@ button:active{transform:scale(.96)}
   </aside>
 </div>
 <div id="wd" hidden><div class="lc"><h1 class="logo" style="font-size:26px">La tua <span>mosca</span></h1><canvas id="wp" width="300" height="200"></canvas><div class="two" id="wt"></div><div id="wo"></div><button class="big" id="wx" type="button">Fatto</button></div></div>
-<div id="end" hidden><div class="lc"><h1 class="logo" id="et"></h1><p id="ed"></p><div id="sb"></div><button class="big" id="er" type="button">Torna alla schermata iniziale</button></div></div><div id="lobby"><div class="lc">
+<div id="end" hidden><div class="lc"><h1 class="logo" id="et"></h1><p id="ed"></p><div id="sb"></div><button class="big" id="ea" type="button">Gioca ancora</button><button class="big" id="er" type="button">Torna alla schermata iniziale</button></div></div><div id="lobby"><div class="lc">
 <h1 class="logo">Fly<span>.io</span> 🪰</h1><p class="small" style="margin:0">L’arena dei moscerini</p>
 <input id="lnm" value="Tu" maxlength="14" aria-label="Il tuo nome">
 <div id="l0"><button class="big" id="bc0" type="button">Crea stanza</button><button class="big" id="bj0" type="button">Unisciti a una stanza</button><button id="bwd" type="button">Personalizza mosca</button></div>
@@ -221,7 +221,7 @@ function step(dt){
   for(const o of owners)if(o.dead>0){o.dead-=dt;if(o.dead<=0)spawn(o)}
   const ws=wm();
   for(const c of cells){
-    if(c.r){const ddx=c.px-c.x,ddy=c.py-c.y,k=Math.min(1,dt*12);if(Math.abs(ddx)+Math.abs(ddy)>3)c.ang=Math.atan2(ddy,ddx);c.x+=ddx*k;c.y+=ddy*k;continue}const o=c.o;if(gm>=5)c.m=o===KING?40:30;let tx=0,ty=0;let spr=o===me&&keys.shift&&c.m>10.5;let sp=260*Math.pow(c.m,-.18)*(o===me?(pw.tb>0?4:1):(PWo(o).tb>0?2.5:1))*(gm===4&&o.t===0?1.08:1)*(inWeb(c)?.35:1)*(spr?1.7:1);
+    if(c.r){const ddx=c.px-c.x,ddy=c.py-c.y,k=Math.min(1,dt*12);if(Math.abs(ddx)+Math.abs(ddy)>3)c.ang=Math.atan2(ddy,ddx);c.x+=ddx*k;c.y+=ddy*k;continue}const o=c.o;if(gm>=5)c.m=o===KING?40:30;let tx=0,ty=0;let spr=o===me&&keys.shift&&c.m>10.5;if(gm>=5&&o===me)spr=stam(me,spr,dt);let sp=260*Math.pow(c.m,-.18)*(o===me?(pw.tb>0?4:1):(PWo(o).tb>0?2.5:1))*(gm===4&&o.t===0?1.08:1)*(inWeb(c)?.35:1)*(spr?1.7:1);
     if(o.bot){
       const fd=nearFood(c),pr=gm===4?ZN:nearCell(c,k=>k.o!==o&&!ally(o,k.o)&&!invis(k.o)&&k.m+1<=c.m),th=gm===4?ZN:nearCell(c,k=>k.o!==o&&!ally(o,k.o)&&!invis(k.o)&&k.m>=c.m+1);
       const gl=botGoal(c,o);let fw=.7,gx=0,gy=0;if(gl){const gd=Math.hypot(gl.x-c.x,gl.y-c.y)||1;gx=(gl.x-c.x)/gd*gl.w;gy=(gl.y-c.y)/gd*gl.w;fw=gl.carry?.08:gl.hold?.4:gl.w>=1?.3:.5}
@@ -230,8 +230,8 @@ function step(dt){
       if(c.x<150)tx+=1;if(c.x>WORLD-150)tx-=1;if(c.y<150)ty+=1;if(c.y>WORLD-150)ty-=1;
       if(o.lik){let bp=null,bd=700;for(const p of pups){if(p.wait>0)continue;const d=Math.hypot(p.x-c.x,p.y-c.y);if(d<bd){bd=d;bp=p}}if(bp){tx+=(bp.x-c.x)/bd*.9;ty+=(bp.y-c.y)/bd*.9}}
       o.sprT=(o.sprT||0)-dt;if(o.sprT<=0){o.sprT=rnd(1,3);o.sprOn=(th.p>.35||pr.p>.5||(gl&&(gl.hunt||(gl.carry&&th.p>.15))))&&Math.random()<.5}
-      if(gm>=5){const R=roleAI(c,o);tx=R[0];ty=R[1];o.sprOn=R[2]}
-      if(o.sprOn&&c.m>12){spr=true;sp*=1.7}
+      if(gm>=5){const R=roleAI(c,o);tx=R[0];ty=R[1];o.sprOn=stam(o,R[2],dt)}
+      {const ws=gm>=5?o.sprOn:(o.sprOn&&c.m>12);if((gm>=5?ws:stam(o,ws,dt))&&c.m>12){spr=true;sp*=1.7}}
       const av=obsAvoid(c);tx+=av[0];ty+=av[1];const l=Math.hypot(tx,ty)||1;tx/=l;ty/=l;
     }else{
       const kx=(keys.d?1:0)-(keys.a?1:0)+jx,ky=(keys.s?1:0)-(keys.w?1:0)+jy,kl=Math.hypot(kx,ky);if(kb&&kl){const mg=Math.min(1,kl);tx=kx/kl*mg;ty=ky/kl*mg}const dx=ws.x-c.x,dy=ws.y-c.y,l=kb?0:Math.hypot(dx,dy);
@@ -605,7 +605,7 @@ $('zv').addEventListener('keydown',e=>{if(e.key==='Enter')zset();else if(e.key==
 $('tl').onclick=()=>$('app').classList.toggle('hl');$('tr').onclick=()=>$('app').classList.toggle('hr');$('th').onclick=()=>$('hud').classList.toggle('off');
 const lname=()=>$('lnm').value.trim().slice(0,14)||'Tu';
 function startGame(bt,host){
-  playing=true;iHost=host;cells.length=0;owners.length=0;for(const k in ro)delete ro[k];seed=room?strHash(roomCode):(Math.random()*1e9|0);obs=mkObs();food=gm>=5?[]:mkFood();elog.length=0;pups=gm>=5?[]:mkPups();plog.length=0;pw.x2=pw.tb=pw.sh=pw.mg=pw.iv=0;chatReset();KING=null;KST.imm=0;KS={};BOMBS=[];BMS=[];ELIMS.clear();rs0.go=0;kgSeen='';HP=null;boomFx.length=0;$('sp').hidden=$('ej').hidden=gm>=5;
+  playing=true;iHost=host;cells.length=0;owners.length=0;for(const k in ro)delete ro[k];seed=room?strHash(roomCode+(roundN?'#'+roundN:'')):(Math.random()*1e9|0);obs=mkObs();food=gm>=5?[]:mkFood();elog.length=0;pups=gm>=5?[]:mkPups();plog.length=0;pw.x2=pw.tb=pw.sh=pw.mg=pw.iv=0;chatReset();KING=null;KST.imm=0;KS={};BOMBS=[];BMS=[];ELIMS.clear();rs0.go=0;kgSeen='';HP=null;boomFx.length=0;$('sp').hidden=$('ej').hidden=gm>=5;
   me=mk(lname(),false);$('nm').value=me.name;me.t=teams&&myT>=0?myT:undefined;if(me.t!==undefined)me.hue=thue(me.t);if(gm===2&&me.t!==undefined){const c0=mine()[0];if(c0){const q=nudge((me.t?2740:260)+rnd(-120,120),1500+rnd(-300,300),30);c0.x=q[0];c0.y=q[1]}}me.fit=myFit;if(me.t===undefined)me.hue=HUES[myFit[3]];over=false;t0=performance.now();KB=[0,0];BK=[0,0];BC=[0,0];ORD=[0,0];ORDP=[undefined,undefined];myOd=null;odSeq=0;for(const k in odSeen)delete odSeen[k];for(const k in seenK)delete seenK[k];for(const k in KK)delete KK[k];lastHit=-1;for(const k in TK)delete TK[k];myF=-1;CCm=0;hsv=[0,0];hctl=-1;for(const k in CCS)delete CCS[k];BASE=gm===2?[nudge(260,1500,150),nudge(2740,1500,150)]:null;HILL=gm===3?[1500,1500]:null;$('end').hidden=true;
   if(bt&&(host||!room))NAMES.forEach((n,i)=>mk(n,true,teams?(gm===4?(i%5===0?0:1):i%2):undefined));
   $('lobby').hidden=true;
@@ -626,7 +626,7 @@ function onP(ch){
   const hp=ps.find(p=>p.presence&&p.presence.host);
   if(hp&&!iHost&&!playing){gm=hp.presence.gm!==undefined?(+hp.presence.gm||0):(hp.presence.tm?1:0);if(gm<0||gm>6)gm=0;teams=gm>=1&&gm<=4}
   if(teams&&myT<0&&!iHost){const cc=[0,0];for(const p of ps){const tt=p.presence&&p.presence.t;if(tt===0||tt===1)cc[tt]++}myT=gm===4?1:(cc[0]<=cc[1]?0:1);room.presence({t:myT}).catch(()=>{})}
-  if(hp&&hp.presence.s&&!playing&&!iHost)startGame(!!hp.presence.bots,false);
+  if(hp&&hp.presence.s&&!playing&&!iHost){roundN=+hp.presence.rn||0;startGame(!!hp.presence.bots,false)}else if(hp&&hp.presence.s&&playing&&!iHost&&(+hp.presence.rn||0)>roundN){roundN=+hp.presence.rn||0;startGame(!!hp.presence.bots,false)}
   if(hp&&hp.presence.res&&playing&&!over)finish(hp.presence.res);
   if(playing)for(const p of ps){
     const d=p.presence||{};if(p.isMe||!Array.isArray(d.c))continue;
@@ -755,7 +755,7 @@ function showEnd(r){const n=x=>Math.round(+x)||0,g=+r.g>=0&&+r.g<=6?+r.g:1,w=r.w
   else if(g===5){$('et').textContent=r.wn?'👑 Vince '+String(r.wn).slice(0,14)+'!':'Fine partita!';$('ed').textContent='Re per '+n(r.ws)+' secondi'+(r.tp?' · '+String(r.tp).slice(0,120):'')}
   else if(g===6){$('et').textContent=r.wn?'💣 Vince '+String(r.wn).slice(0,14)+'!':'Sono esplosi tutti!';$('ed').textContent=r.wn?'È l’ultimo rimasto':'Nessun sopravvissuto'}
   else{$('et').textContent=w<0?'Pareggio!':'Vince la squadra '+TN[w]+'!';$('ed').innerHTML=`${['Mangiate','Mangiate','Bandiere','Secondi sulla collina'][g]}: Rossa ${n(k[0])} – ${n(k[1])} Blu<br>Massa finale: Rossa ${n(m[0])} – ${n(m[1])} Blu`}
-  renderScore();$('end').hidden=false}
+  renderScore();{const ea=$('ea'),au=iHost||!room;ea.disabled=!au;ea.textContent=au?'Gioca ancora':'Aspetto che l’host riparta…'}$('end').hidden=false}
 function finish(r){if(over)return;over=true;showEnd(r)}
 const capScore=k=>Object.values(CCS).reduce((q,v)=>q+(v.t===k?v.c:0),0)+(me.t===k?CCm:0)+BC[k];
 const infCount=k=>owners.filter(o=>o.t===k).length+Object.values(ro).filter(o=>o.t===k).length;
@@ -789,7 +789,7 @@ function statTick(dt){
 function modeTick(dt){if(gm>=5&&!over){roundLocal(dt);if(iHost||!room)roundTick(dt);return}if(!teams||over)return;statTick(dt);if(gm===4)infectTick();if(gm===2){ctfTick();if(iHost||!room)botCtf()}else if(gm===3){HILL=hillPos((performance.now()-t0)/1000);if(iHost||!room)kothTick(dt)}}
 
 /* ===== Modalità Re e Bomba ===== */
-const IDH='#h',ELIMS=new Set(),KST={imm:0},rs0={go:0};let KING=null,KS={},BOMBS=[],BMS=[],HP=null,kgSeen='',boomFx=[],bmMine=false;
+const IDH='#h',ELIMS=new Set(),KST={imm:0},rs0={go:0};let roundN=0,KING=null,KS={},BOMBS=[],BMS=[],HP=null,kgSeen='',boomFx=[],bmMine=false;
 const isAuth=()=>iHost||!room;
 const selfId=()=>isAuth()?IDH:myPeer;
 function sidOf(o){if(o===me)return IDH;if(o.bot&&owners.includes(o))return '#b'+o.id;return o.key||null}
@@ -828,7 +828,7 @@ function roundTick(dt){
   for(const b of BOMBS){b.left-=dt;b.cool-=dt;b.pc-=dt;if(!L.includes(b.o)){const f=free();if(f.length){b.o=f[Math.floor(Math.random()*f.length)];b.cool=1.2}}}
   for(const b of BOMBS){if(b.cool>0)continue;for(const o of free()){if(o===b.prev&&b.pc>0)continue;if(touchG(g,b.o,o)){b.prev=b.o;b.pc=3;b.o=o;b.cool=1.2;if(o===me)flash('💣 Hai la bomba! Tocca qualcuno per passarla');break}}}
   for(const b of BOMBS.slice()){if(b.left>0)continue;const o=b.o;ELIMS.add(sidOf(o));boomAt(o);elimLocal(o);for(let i=cells.length-1;i>=0;i--)if(cells[i].o===o)cells.splice(i,1);BOMBS.splice(BOMBS.indexOf(b),1);if(o!==me)flash('💥 '+o.name+' è esploso!');
-    const A=L.filter(q=>q!==o),need=Math.min(2,A.length-1),f=A.filter(q=>!hold(q));while(BOMBS.length<need&&f.length){const q=f.splice(Math.floor(Math.random()*f.length),1)[0];BOMBS.push({o:q,left:20,cool:1.2,prev:null,pc:0})}
+    const A=L.filter(q=>!ELIMS.has(sidOf(q))),need=Math.min(2,A.length-1),f=A.filter(q=>!hold(q));while(BOMBS.length>Math.max(need,0)){let mi=0;BOMBS.forEach((q,i)=>{if(q.left>BOMBS[mi].left)mi=i});BOMBS.splice(mi,1)}while(BOMBS.length<need&&f.length){const q=f.splice(Math.floor(Math.random()*f.length),1)[0];BOMBS.push({o:q,left:20,cool:1.2,prev:null,pc:0})}
     if(A.length<=1){const w=A[0]||null,r={w:-1,g:6,wn:w?w.name:'',wm:0,k:[0,0],m:[0,0]};finish(r);if(room)room.presence({res:r}).catch(()=>{});return}}
 }
 function endKing(){const E=Object.keys(KS).map(k=>({o:oById(k),s:KS[k]})).filter(x=>x.o).sort((a,b)=>b.s-a.s);const w=E[0],r={w:-1,g:5,wn:w?w.o.name:'',ws:w?Math.round(w.s):0,tp:E.slice(0,3).map(x=>x.o.name+' '+Math.round(x.s)+'s').join(' · '),k:[0,0],m:[0,0]};finish(r);if(room)room.presence({res:r}).catch(()=>{})}
@@ -837,7 +837,9 @@ function doorWay(c,x,y){const dir=Math.hypot(x-c.x,y-c.y);let best=null,bv=dir-6
 function goTo(c,x,y){const w=doorWay(c,x,y),tx=w?w[0]:x,ty=w?w[1]:y,l=Math.hypot(tx-c.x,ty-c.y)||1;return[(tx-c.x)/l,(ty-c.y)/l,!!w]}
 function nearestCell(c,f){let b=null,bd=1e9;for(const k of cells){if(!f(k))continue;const d=Math.hypot(k.x-c.x,k.y-c.y);if(d<bd){bd=d;b=k}}return b?{k:b,d:bd}:null}
 function fleeDoor(c,k){let best=null,bd=420;for(let i=0;i<4;i++){const d=DOORS[i],e=DOORS[(i+2)%4],dd=Math.hypot(d[0]-c.x,d[1]-c.y);if(dd<bd&&Math.hypot(k.x-d[0],k.y-d[1])>dd+80&&Math.hypot(k.x-e[0],k.y-e[1])>650){bd=dd;best=d}}return best}
+function stam(o,want,dt){if(o.stam===undefined)o.stam=1;if(want&&!o.tired){o.stam-=dt/3.5;if(o.stam<=0){o.stam=0;o.tired=true}}else{o.stam=Math.min(1,o.stam+dt/5);if(o.tired&&o.stam>=.5)o.tired=false}return want&&!o.tired}
 function roleAI(c,o){
+  const dt0=Math.min(.1,Math.max(0,T-(o.rT||T)));o.rT=T;
   const al=k=>!ELIMS.has(sidOf(k.o)),nrm=(x,y)=>{const l=Math.hypot(x,y)||1;return[x/l,y/l]};
   const W=()=>nrm(o.wx,o.wy);let out,dr=false;
   if(gm===5){
@@ -851,10 +853,11 @@ function roleAI(c,o){
     else{const th=nearCell(c,k=>H(k.o)),nk=nearestCell(c,k=>H(k.o)),fd=nk&&nk.d<420?fleeDoor(c,nk.k):null;if(fd){dr=true;const l=Math.hypot(fd[0]-c.x,fd[1]-c.y)||1;out=[(fd[0]-c.x)/l,(fd[1]-c.y)/l,true]}else out=th.p>0?[-th.dx,-th.dy,th.p>.45]:[...W(),false]}}
   let x=out[0],y=out[1];if(!dr){if(c.x<220)x+=1.2;if(c.x>WORLD-220)x-=1.2;if(c.y<220)y+=1.2;if(c.y>WORLD-220)y-=1.2}
   const n=nrm(x,y);return[n[0],n[1],out[2]]}
+function sprintTxt(){return ' · sprint '+Math.round((me.stam===undefined?1:me.stam)*100)+'%'+(me.tired?' (stanco)':'')}
 function roundHud(){const tm=l=>Math.floor(l/60)+':'+String(Math.floor(l%60)).padStart(2,'0');
-  if(gm===5){const l=Math.max(0,180-(performance.now()-t0)/1000);return '👑 '+(KING?KING.name:'…')+(KST.imm>.05?' (immune '+Math.ceil(KST.imm)+'s)':'')+' · ⏱ '+tm(l)+(KING===me?' · sei il re!':'')+' · tuo tempo da re: '+Math.floor(me.pt||0)+'s'}
+  if(gm===5){const l=Math.max(0,180-(performance.now()-t0)/1000);return '👑 '+(KING?KING.name:'…')+(KST.imm>.05?' (immune '+Math.ceil(KST.imm)+'s)':'')+' · ⏱ '+tm(l)+(KING===me?' · sei il re!':'')+' · tuo tempo da re: '+Math.floor(me.pt||0)+'s'+sprintTxt()}
   const n=new Set(cells.map(c=>c.o).filter(o=>!ELIMS.has(sidOf(o)))).size,B=bombList();
-  return '💣 In gara: '+n+(B.length?' · '+B.map(x=>x.o.name.slice(0,8)+' '+Math.max(0,Math.ceil(x.left))+'s').join(' · '):'')+(B.some(x=>x.o===me)?' · HAI LA BOMBA!':'')+(me.elim?' · sei fuori':'')}
+  return '💣 In gara: '+n+(B.length?' · '+B.map(x=>x.o.name.slice(0,8)+' '+Math.max(0,Math.ceil(x.left))+'s').join(' · '):'')+(B.some(x=>x.o===me)?' · HAI LA BOMBA!':'')+(me.elim?' · sei fuori':'')+sprintTxt()}
 function drawRoleMarks(s){if(gm<5)return;const X=X0;
   if(gm===5&&KING){const c=bigCell(KING);if(c){const r=rad(c.m),sz=Math.max(r*1.5,22/s);X.save();
     if(KST.imm>0){X.strokeStyle='rgba(255,215,90,.95)';X.lineWidth=3/s;X.setLineDash([10/s,8/s]);X.lineDashOffset=-T*30;X.beginPath();X.arc(c.x,c.y,r*1.5,0,6.28);X.stroke();X.setLineDash([])}
@@ -891,6 +894,7 @@ function teamTick(){
 }
 function teamHud(){const e=$('tm');e.hidden=over;if(e.hidden)return;if(gm>=5){e.textContent=roundHud();return}const l=Math.max(0,DUR()-Math.floor((performance.now()-t0)/1000)),tm=Math.floor(l/60)+':'+String(l%60).padStart(2,'0');if(!teams){e.textContent='⏱ '+tm+' · vince il più grande';return}e.innerHTML=`<span style="color:${gm===4?'#8cff3d':'#ff6b5e'}">${gm===4?'Infetti':'Rossa'} ${gs(0)}</span> <b>${tm}</b> <span style="color:#6db4ff">${gs(1)} ${gm===4?'Sani':'Blu'}</span> · ${TGX[gm]}`}
 $('er').onclick=()=>location.reload();
+$('ea').onclick=()=>{if(!(iHost||!room))return;if(room){roundN++;room.presence({s:1,rn:roundN,res:null,el:[],bm:[],kg:null}).catch(()=>{})}startGame(bots,true)};
 let last=performance.now(),lt=0;
 function loop(t){const dt=Math.min(.05,(t-last)/1000);last=t;T+=dt;if(playing&&!over){step(dt);modeTick(dt);teamTick();pt+=dt;if(room&&pt>.08){pt=0;pub()}}draw();if(!$('wd').hidden)drawPreview();lt+=dt;if(lt>.25){lt=0;if(playing)lists()}requestAnimationFrame(loop)}
 rs();mx=w/2;my=h/2;requestAnimationFrame(loop);
